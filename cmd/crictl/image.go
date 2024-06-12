@@ -83,6 +83,16 @@ var pullImageCommand = &cli.Command{
 			Aliases: []string{"a"},
 			Usage:   "Annotation to be set on the pulled image",
 		},
+		&cli.BoolFlag{
+			Name:    "mount",
+			Aliases: []string{"m"},
+			Usage:   "Mount the OCI object",
+		},
+		&cli.StringFlag{
+			Name:    "mount-label",
+			Aliases: []string{"l"},
+			Usage:   "Mount label for the OCI object",
+		},
 	},
 	ArgsUsage: "NAME[:TAG|@DIGEST]",
 	Action: func(c *cli.Context) error {
@@ -119,11 +129,15 @@ var pullImageCommand = &cli.Command{
 				return err
 			}
 		}
-		r, err := PullImageWithSandbox(imageClient, imageName, auth, sandbox, ann)
+		r, err := PullImageWithSandbox(imageClient, imageName, auth, sandbox, ann, c.Bool("mount"), c.String("mount-label"))
 		if err != nil {
 			return fmt.Errorf("pulling image: %w", err)
 		}
 		fmt.Printf("Image is up to date for %s\n", r.ImageRef)
+
+		if r.Mountpoint != "" {
+			fmt.Printf("Image mounted to: %s\n", r.Mountpoint)
+		}
 		return nil
 	},
 }
@@ -633,11 +647,13 @@ func normalizeRepoDigest(repoDigests []string) (string, string) {
 
 // PullImageWithSandbox sends a PullImageRequest to the server, and parses
 // the returned PullImageResponse.
-func PullImageWithSandbox(client internalapi.ImageManagerService, image string, auth *pb.AuthConfig, sandbox *pb.PodSandboxConfig, ann map[string]string) (*pb.PullImageResponse, error) {
+func PullImageWithSandbox(client internalapi.ImageManagerService, image string, auth *pb.AuthConfig, sandbox *pb.PodSandboxConfig, ann map[string]string, mount bool, mountLabel string) (*pb.PullImageResponse, error) {
 	request := &pb.PullImageRequest{
 		Image: &pb.ImageSpec{
 			Image:       image,
 			Annotations: ann,
+			Mount:       mount,
+			MountLabel:  mountLabel,
 		},
 	}
 	if auth != nil {
@@ -647,11 +663,10 @@ func PullImageWithSandbox(client internalapi.ImageManagerService, image string, 
 		request.SandboxConfig = sandbox
 	}
 	logrus.Debugf("PullImageRequest: %v", request)
-	res, err := client.PullImage(context.TODO(), request.Image, request.Auth, request.SandboxConfig)
+	resp, err := client.PullImage(context.TODO(), request.Image, request.Auth, request.SandboxConfig)
 	if err != nil {
 		return nil, err
 	}
-	resp := &pb.PullImageResponse{ImageRef: res}
 	logrus.Debugf("PullImageResponse: %v", resp)
 	return resp, nil
 }

@@ -356,9 +356,9 @@ func PullPublicImage(c internalapi.ImageManagerService, imageName string, podCon
 	imageSpec := &runtimeapi.ImageSpec{
 		Image: imageName,
 	}
-	id, err := c.PullImage(context.TODO(), imageSpec, nil, podConfig)
+	res, err := c.PullImage(context.TODO(), imageSpec, nil, podConfig)
 	ExpectNoError(err, "failed to pull image: %v", err)
-	return id
+	return res.GetImageRef()
 }
 
 // LoadYamlFile attempts to load the given YAML file into the given struct.
