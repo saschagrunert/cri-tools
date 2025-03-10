@@ -36,6 +36,8 @@ require (
 	sigs.k8s.io/yaml v1.4.0
 )
 
+replace k8s.io/cri-api => github.com/saschagrunert/cri-api v0.0.0-20250310080858-ad861b89fb8f
+
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
