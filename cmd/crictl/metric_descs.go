@@ -106,7 +106,7 @@ func (m *metricDescriptorsDisplayer) displayMetricDescriptors(
 }
 
 func listMetricDescriptors(ctx context.Context, client cri.RuntimeService) ([]*pb.MetricDescriptor, error) {
-	descriptors, err := InterruptableRPC(ctx, func(ctx context.Context) ([]*pb.MetricDescriptor, error) {
+	descriptors, err := interruptableRPC(ctx, func(ctx context.Context) ([]*pb.MetricDescriptor, error) {
 		return client.ListMetricDescriptors(ctx)
 	})
 	if err != nil {

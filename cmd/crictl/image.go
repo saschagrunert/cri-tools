@@ -140,7 +140,7 @@ var pullImageCommand = &cli.Command{
 
 		timeout := c.Duration("pull-timeout")
 
-		r, err := PullImageWithSandbox(c.Context, imageClient, imageName, auth, sandbox, ann, timeout)
+		r, err := pullImageWithSandbox(c.Context, imageClient, imageName, auth, sandbox, ann, timeout)
 		if err != nil {
 			return fmt.Errorf("pulling image: %w", err)
 		}
@@ -201,7 +201,7 @@ var listImageCommand = &cli.Command{
 			return err
 		}
 
-		r, err := ListImages(c.Context, imageClient, c.Args().First(), c.StringSlice("filter"))
+		r, err := listImages(c.Context, imageClient, c.Args().First(), c.StringSlice("filter"))
 		if err != nil {
 			return fmt.Errorf("listing images: %w", err)
 		}
@@ -353,7 +353,7 @@ var imageStatusCommand = &cli.Command{
 		ids := c.Args().Slice()
 
 		if len(ids) == 0 {
-			r, err := ListImages(c.Context, imageClient, c.String("name"), c.StringSlice("filter"))
+			r, err := listImages(c.Context, imageClient, c.String("name"), c.StringSlice("filter"))
 			if err != nil {
 				return fmt.Errorf("listing images: %w", err)
 			}
@@ -372,7 +372,7 @@ var imageStatusCommand = &cli.Command{
 		statuses := []statusData{}
 
 		for _, id := range ids {
-			r, err := ImageStatus(c.Context, imageClient, id, verbose)
+			r, err := imageStatus(c.Context, imageClient, id, verbose)
 			if err != nil {
 				return fmt.Errorf("image status for %q request: %w", id, err)
 			}
@@ -459,7 +459,7 @@ the specified tag. To remove only a specific tag, use the container runtime's na
 
 		// Add all available images to the ID selector
 		if all || prune {
-			r, err := InterruptableRPC(cliCtx.Context, func(ctx context.Context) ([]*pb.Image, error) {
+			r, err := interruptableRPC(cliCtx.Context, func(ctx context.Context) ([]*pb.Image, error) {
 				return imageClient.ListImages(ctx, nil)
 			})
 			if err != nil {
@@ -487,7 +487,7 @@ the specified tag. To remove only a specific tag, use the container runtime's na
 			}
 
 			// Container images
-			containers, err := InterruptableRPC(cliCtx.Context, func(ctx context.Context) ([]*pb.Container, error) {
+			containers, err := interruptableRPC(cliCtx.Context, func(ctx context.Context) ([]*pb.Container, error) {
 				return runtimeClient.ListContainers(ctx, nil)
 			})
 			if err != nil {
@@ -497,7 +497,7 @@ the specified tag. To remove only a specific tag, use the container runtime's na
 			for _, container := range containers {
 				img := container.GetImage().GetImage()
 
-				imageStatus, err := ImageStatus(cliCtx.Context, imageClient, img, false)
+				imageStatus, err := imageStatus(cliCtx.Context, imageClient, img, false)
 				if err != nil {
 					logrus.Errorf(
 						"image status request for %q failed: %v",
@@ -531,7 +531,7 @@ the specified tag. To remove only a specific tag, use the container runtime's na
 			}
 
 			funcs = append(funcs, func() error {
-				status, err := ImageStatus(cliCtx.Context, imageClient, id, false)
+				status, err := imageStatus(cliCtx.Context, imageClient, id, false)
 				if err != nil {
 					return fmt.Errorf("image status request for %q failed: %w", id, err)
 				}
@@ -555,7 +555,7 @@ the specified tag. To remove only a specific tag, use the container runtime's na
 					}
 				}
 
-				if err := RemoveImage(cliCtx.Context, imageClient, id); err != nil {
+				if err := removeImage(cliCtx.Context, imageClient, id); err != nil {
 					// We ignore further errors on prune because there might be
 					// races
 					if !prune {
@@ -583,7 +583,7 @@ the specified tag. To remove only a specific tag, use the container runtime's na
 			})
 		}
 
-		return AggregateGoroutines(funcs...)
+		return aggregateGoroutines(funcs...)
 	},
 }
 
@@ -615,7 +615,7 @@ var imageFsInfoCommand = &cli.Command{
 
 		tmplStr := c.String("template")
 
-		r, err := ImageFsInfo(c.Context, imageClient)
+		r, err := imageFsInfo(c.Context, imageClient)
 		if err != nil {
 			return fmt.Errorf("image filesystem info request: %w", err)
 		}
@@ -755,9 +755,9 @@ func normalizeRepoDigest(repoDigests []string) (repo, digest string) {
 	return repoDigestPair[0], repoDigestPair[1]
 }
 
-// PullImageWithSandbox sends a PullImageRequest to the server, and parses
+// pullImageWithSandbox sends a PullImageRequest to the server, and parses
 // the returned PullImageResponse.
-func PullImageWithSandbox(ctx context.Context, client internalapi.ImageManagerService, image string, auth *pb.AuthConfig, sandbox *pb.PodSandboxConfig, ann map[string]string, timeout time.Duration) (*pb.PullImageResponse, error) {
+func pullImageWithSandbox(ctx context.Context, client internalapi.ImageManagerService, image string, auth *pb.AuthConfig, sandbox *pb.PodSandboxConfig, ann map[string]string, timeout time.Duration) (*pb.PullImageResponse, error) {
 	request := &pb.PullImageRequest{
 		Image: &pb.ImageSpec{
 			Image:       image,
@@ -782,7 +782,7 @@ func PullImageWithSandbox(ctx context.Context, client internalapi.ImageManagerSe
 		defer cancel()
 	}
 
-	res, err := InterruptableRPC(ctx, func(ctx context.Context) (string, error) {
+	res, err := interruptableRPC(ctx, func(ctx context.Context) (string, error) {
 		return client.PullImage(ctx, request.GetImage(), request.GetAuth(), request.GetSandboxConfig())
 	})
 	if err != nil {
@@ -795,13 +795,13 @@ func PullImageWithSandbox(ctx context.Context, client internalapi.ImageManagerSe
 	return resp, nil
 }
 
-// ListImages sends a ListImagesRequest to the server, and parses
-// the returned ListImagesResponse.
-func ListImages(ctx context.Context, client internalapi.ImageManagerService, nameFilter string, conditionFilters []string) (*pb.ListImagesResponse, error) {
+// listImages sends a listImagesRequest to the server, and parses
+// the returned listImagesResponse.
+func listImages(ctx context.Context, client internalapi.ImageManagerService, nameFilter string, conditionFilters []string) (*pb.ListImagesResponse, error) {
 	request := &pb.ListImagesRequest{Filter: &pb.ImageFilter{Image: &pb.ImageSpec{Image: nameFilter}}}
-	logrus.Debugf("ListImagesRequest: %v", request)
+	logrus.Debugf("listImagesRequest: %v", request)
 
-	res, err := InterruptableRPC(ctx, func(ctx context.Context) ([]*pb.Image, error) {
+	res, err := interruptableRPC(ctx, func(ctx context.Context) ([]*pb.Image, error) {
 		return client.ListImages(ctx, request.GetFilter())
 	})
 	if err != nil {
@@ -809,7 +809,7 @@ func ListImages(ctx context.Context, client internalapi.ImageManagerService, nam
 	}
 
 	resp := &pb.ListImagesResponse{Images: res}
-	logrus.Debugf("ListImagesResponse: %v", resp)
+	logrus.Debugf("listImagesResponse: %v", resp)
 
 	sort.Sort(imageByRef(resp.GetImages()))
 
@@ -924,48 +924,48 @@ func filterByDangling(filterValue string, imageList []*pb.Image) []*pb.Image {
 	return filtered
 }
 
-// ImageStatus sends an ImageStatusRequest to the server, and parses
-// the returned ImageStatusResponse.
-func ImageStatus(ctx context.Context, client internalapi.ImageManagerService, image string, verbose bool) (*pb.ImageStatusResponse, error) {
+// imageStatus sends an imageStatusRequest to the server, and parses
+// the returned imageStatusResponse.
+func imageStatus(ctx context.Context, client internalapi.ImageManagerService, image string, verbose bool) (*pb.ImageStatusResponse, error) {
 	request := &pb.ImageStatusRequest{
 		Image:   &pb.ImageSpec{Image: image},
 		Verbose: verbose,
 	}
-	logrus.Debugf("ImageStatusRequest: %v", request)
+	logrus.Debugf("imageStatusRequest: %v", request)
 
-	res, err := InterruptableRPC(ctx, func(ctx context.Context) (*pb.ImageStatusResponse, error) {
+	res, err := interruptableRPC(ctx, func(ctx context.Context) (*pb.ImageStatusResponse, error) {
 		return client.ImageStatus(ctx, request.GetImage(), request.GetVerbose())
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	logrus.Debugf("ImageStatusResponse: %v", res)
+	logrus.Debugf("imageStatusResponse: %v", res)
 
 	return res, nil
 }
 
-// RemoveImage sends a RemoveImageRequest to the server, and parses
-// the returned RemoveImageResponse.
-func RemoveImage(ctx context.Context, client internalapi.ImageManagerService, image string) error {
+// removeImage sends a removeImageRequest to the server, and parses
+// the returned removeImageResponse.
+func removeImage(ctx context.Context, client internalapi.ImageManagerService, image string) error {
 	if image == "" {
 		return errors.New("ImageID cannot be empty")
 	}
 
 	request := &pb.RemoveImageRequest{Image: &pb.ImageSpec{Image: image}}
-	logrus.Debugf("RemoveImageRequest: %v", request)
+	logrus.Debugf("removeImageRequest: %v", request)
 
-	_, err := InterruptableRPC(ctx, func(ctx context.Context) (*pb.RemoveImageResponse, error) {
+	_, err := interruptableRPC(ctx, func(ctx context.Context) (*pb.RemoveImageResponse, error) {
 		return nil, client.RemoveImage(ctx, request.GetImage())
 	})
 
 	return err
 }
 
-// ImageFsInfo sends an ImageStatusRequest to the server, and parses
-// the returned ImageFsInfoResponse.
-func ImageFsInfo(ctx context.Context, client internalapi.ImageManagerService) (*pb.ImageFsInfoResponse, error) {
-	res, err := InterruptableRPC(ctx, func(ctx context.Context) (*pb.ImageFsInfoResponse, error) {
+// imageFsInfo sends an imageStatusRequest to the server, and parses
+// the returned imageFsInfoResponse.
+func imageFsInfo(ctx context.Context, client internalapi.ImageManagerService) (*pb.ImageFsInfoResponse, error) {
+	res, err := interruptableRPC(ctx, func(ctx context.Context) (*pb.ImageFsInfoResponse, error) {
 		return client.ImageFsInfo(ctx)
 	})
 	if err != nil {
@@ -976,7 +976,7 @@ func ImageFsInfo(ctx context.Context, client internalapi.ImageManagerService) (*
 		ImageFilesystems:     res.GetImageFilesystems(),
 		ContainerFilesystems: res.GetContainerFilesystems(),
 	}
-	logrus.Debugf("ImageFsInfoResponse: %v", resp)
+	logrus.Debugf("imageFsInfoResponse: %v", resp)
 
 	return resp, nil
 }

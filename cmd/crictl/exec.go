@@ -196,7 +196,7 @@ var runtimeExecCommand = &cli.Command{
 				return err
 			}
 
-			ctrs, err := ListContainers(c.Context, runtimeClient, imageClient, opts)
+			ctrs, err := listContainers(c.Context, runtimeClient, imageClient, opts)
 			if err != nil {
 				return fmt.Errorf("listing containers: %w", err)
 			}
@@ -245,7 +245,7 @@ var runtimeExecCommand = &cli.Command{
 				}
 
 				if c.Bool("sync") {
-					exitCode, err := ExecSync(c.Context, runtimeClient, optsCopy)
+					exitCode, err := execSync(c.Context, runtimeClient, optsCopy)
 					if err != nil {
 						return fmt.Errorf("execing command in container %s synchronously: %w", id, err)
 					}
@@ -257,7 +257,7 @@ var runtimeExecCommand = &cli.Command{
 					ctx, cancel := context.WithCancel(c.Context)
 					defer cancel()
 
-					err = Exec(ctx, runtimeClient, optsCopy)
+					err = execContainer(ctx, runtimeClient, optsCopy)
 					if err != nil {
 						return fmt.Errorf("execing command in container %s: %w", id, err)
 					}
@@ -267,7 +267,7 @@ var runtimeExecCommand = &cli.Command{
 			})
 		}
 
-		errs := AggregateGoroutines(funcs...)
+		errs := aggregateGoroutines(funcs...)
 
 		if ignoreErrors {
 			logrus.Debugf("Ignoring errors: %v", errs)
@@ -307,16 +307,16 @@ func tlsConfigFromFlags(ctx *cli.Context) (*rest.TLSClientConfig, error) {
 	return cfg, nil
 }
 
-// ExecSync sends an ExecSyncRequest to the server, and parses
-// the returned ExecSyncResponse. The function returns the corresponding exit
+// execSync sends an execSyncRequest to the server, and parses
+// the returned execSyncResponse. The function returns the corresponding exit
 // code beside an general error.
-func ExecSync(ctx context.Context, client internalapi.RuntimeService, opts *execOptions) (int, error) {
+func execSync(ctx context.Context, client internalapi.RuntimeService, opts *execOptions) (int, error) {
 	request := &pb.ExecSyncRequest{
 		ContainerId: opts.id,
 		Cmd:         opts.cmd,
 		Timeout:     opts.timeout,
 	}
-	logrus.Debugf("ExecSyncRequest: %v", request)
+	logrus.Debugf("execSyncRequest: %v", request)
 
 	timeoutDuration := time.Duration(opts.timeout) * time.Second
 
@@ -324,7 +324,7 @@ func ExecSync(ctx context.Context, client internalapi.RuntimeService, opts *exec
 		stdout, stderr []byte
 	}
 
-	io, err := InterruptableRPC(ctx, func(ctx context.Context) (*stdio, error) {
+	io, err := interruptableRPC(ctx, func(ctx context.Context) (*stdio, error) {
 		stdout, stderr, err := client.ExecSync(ctx, opts.id, opts.cmd, timeoutDuration)
 		if err != nil {
 			return nil, err
@@ -342,8 +342,8 @@ func ExecSync(ctx context.Context, client internalapi.RuntimeService, opts *exec
 	return 0, nil
 }
 
-// Exec sends an ExecRequest to server, and parses the returned ExecResponse.
-func Exec(ctx context.Context, client internalapi.RuntimeService, opts *execOptions) error {
+// execContainer sends an ExecRequest to server, and parses the returned ExecResponse.
+func execContainer(ctx context.Context, client internalapi.RuntimeService, opts *execOptions) error {
 	request := &pb.ExecRequest{
 		ContainerId: opts.id,
 		Cmd:         opts.cmd,
@@ -355,7 +355,7 @@ func Exec(ctx context.Context, client internalapi.RuntimeService, opts *execOpti
 
 	logrus.Debugf("ExecRequest: %v", request)
 
-	r, err := InterruptableRPC(ctx, func(ctx context.Context) (*pb.ExecResponse, error) {
+	r, err := interruptableRPC(ctx, func(ctx context.Context) (*pb.ExecResponse, error) {
 		return client.Exec(ctx, request)
 	})
 	logrus.Debugf("ExecResponse: %v", r)

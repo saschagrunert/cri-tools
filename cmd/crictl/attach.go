@@ -101,7 +101,7 @@ var runtimeAttachCommand = &cli.Command{
 			return fmt.Errorf("get TLS config from flags: %w", err)
 		}
 
-		if err = Attach(ctx, runtimeClient, opts); err != nil {
+		if err = attach(ctx, runtimeClient, opts); err != nil {
 			return fmt.Errorf("attaching running container failed: %w", err)
 		}
 
@@ -109,8 +109,8 @@ var runtimeAttachCommand = &cli.Command{
 	},
 }
 
-// Attach sends an AttachRequest to server, and parses the returned AttachResponse.
-func Attach(ctx context.Context, client internalapi.RuntimeService, opts attachOptions) error {
+// attach sends an AttachRequest to server, and parses the returned AttachResponse.
+func attach(ctx context.Context, client internalapi.RuntimeService, opts attachOptions) error {
 	if opts.id == "" {
 		return errors.New("ID cannot be empty")
 	}
@@ -124,7 +124,7 @@ func Attach(ctx context.Context, client internalapi.RuntimeService, opts attachO
 	}
 	logrus.Debugf("AttachRequest: %v", request)
 
-	r, err := InterruptableRPC(ctx, func(ctx context.Context) (*pb.AttachResponse, error) {
+	r, err := interruptableRPC(ctx, func(ctx context.Context) (*pb.AttachResponse, error) {
 		return client.Attach(ctx, request)
 	})
 	logrus.Debugf("AttachResponse: %v", r)

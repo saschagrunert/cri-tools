@@ -118,7 +118,7 @@ var statsCommand = &cli.Command{
 			return err
 		}
 
-		if err = ContainerStats(runtimeClient, opts); err != nil {
+		if err = containerStats(runtimeClient, opts); err != nil {
 			return fmt.Errorf("get container stats: %w", err)
 		}
 
@@ -141,9 +141,9 @@ type containerStatsDisplayer struct {
 	request *pb.ListContainerStatsRequest
 }
 
-// ContainerStats sends a ListContainerStatsRequest to the server, and
+// containerStats sends a ListContainerStatsRequest to the server, and
 // parses the returned ListContainerStatsResponse.
-func ContainerStats(client internalapi.RuntimeService, opts *statsOptions) error {
+func containerStats(client internalapi.RuntimeService, opts *statsOptions) error {
 	d := containerStatsDisplayer{
 		opts: opts,
 		request: &pb.ListContainerStatsRequest{
@@ -242,7 +242,7 @@ func (d containerStatsDisplayer) displayStats(ctx context.Context, client intern
 func getContainerStats(ctx context.Context, client internalapi.RuntimeService, request *pb.ListContainerStatsRequest) (*pb.ListContainerStatsResponse, error) {
 	logrus.Debugf("ListContainerStatsRequest: %v", request)
 
-	r, err := InterruptableRPC(ctx, func(ctx context.Context) ([]*pb.ContainerStats, error) {
+	r, err := interruptableRPC(ctx, func(ctx context.Context) ([]*pb.ContainerStats, error) {
 		return client.ListContainerStats(ctx, request.GetFilter())
 	})
 	logrus.Debugf("ListContainerResponse: %v", r)

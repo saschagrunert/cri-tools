@@ -39,8 +39,8 @@ const (
 	streamStderr = "stderr"
 )
 
-// NewLogOptions converts PodLogOptions to LogOptions.
-func NewLogOptions(follow, timestamps bool, since time.Time, tailLines, limitBytes *int64) *logs.LogOptions {
+// newLogOptions converts PodLogOptions to LogOptions.
+func newLogOptions(follow, timestamps bool, since time.Time, tailLines, limitBytes *int64) *logs.LogOptions {
 	res := &logs.LogOptions{
 		Follow:    follow,
 		Timestamp: timestamps,
@@ -123,7 +123,7 @@ var logsCommand = &cli.Command{
 		}
 
 		if c.Bool("reopen") {
-			if _, err := InterruptableRPC(c.Context, func(ctx context.Context) (any, error) {
+			if _, err := interruptableRPC(c.Context, func(ctx context.Context) (any, error) {
 				return nil, runtimeService.ReopenContainerLog(ctx, containerID)
 			}); err != nil {
 				return fmt.Errorf("reopen container logs: %w", err)
@@ -154,9 +154,9 @@ var logsCommand = &cli.Command{
 			return errors.New("--tail and --stream are mutually exclusive")
 		}
 
-		logOptions := NewLogOptions(c.Bool("follow"), timestamp, since, &tailLines, &limitBytes)
+		logOptions := newLogOptions(c.Bool("follow"), timestamp, since, &tailLines, &limitBytes)
 
-		status, err := InterruptableRPC(c.Context, func(ctx context.Context) (*pb.ContainerStatusResponse, error) {
+		status, err := interruptableRPC(c.Context, func(ctx context.Context) (*pb.ContainerStatusResponse, error) {
 			return runtimeService.ContainerStatus(ctx, containerID, false)
 		})
 		if err != nil {

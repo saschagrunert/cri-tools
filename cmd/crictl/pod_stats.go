@@ -276,7 +276,7 @@ func getPodSandboxStats(
 ) ([]*pb.PodSandboxStats, error) {
 	logrus.Debugf("PodSandboxStatsFilter: %v", filter)
 
-	stats, err := InterruptableRPC(ctx, func(ctx context.Context) ([]*pb.PodSandboxStats, error) {
+	stats, err := interruptableRPC(ctx, func(ctx context.Context) ([]*pb.PodSandboxStats, error) {
 		return client.ListPodSandboxStats(ctx, filter)
 	})
 	if err != nil {

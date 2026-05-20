@@ -83,7 +83,7 @@ var runtimePortForwardCommand = &cli.Command{
 			return fmt.Errorf("get TLS config from flags: %w", err)
 		}
 
-		if err = PortForward(c.Context, runtimeClient, opts); err != nil {
+		if err = portForward(c.Context, runtimeClient, opts); err != nil {
 			return fmt.Errorf("port forward: %w", err)
 		}
 
@@ -91,8 +91,8 @@ var runtimePortForwardCommand = &cli.Command{
 	},
 }
 
-// PortForward sends an PortForwardRequest to server, and parses the returned PortForwardResponse.
-func PortForward(ctx context.Context, client internalapi.RuntimeService, opts portforwardOptions) error {
+// portForward sends a PortForwardRequest to server, and parses the returned PortForwardResponse.
+func portForward(ctx context.Context, client internalapi.RuntimeService, opts portforwardOptions) error {
 	if opts.id == "" {
 		return errors.New("ID cannot be empty")
 	}
@@ -102,7 +102,7 @@ func PortForward(ctx context.Context, client internalapi.RuntimeService, opts po
 	}
 	logrus.Debugf("PortForwardRequest: %v", request)
 
-	r, err := InterruptableRPC(ctx, func(ctx context.Context) (*pb.PortForwardResponse, error) {
+	r, err := interruptableRPC(ctx, func(ctx context.Context) (*pb.PortForwardResponse, error) {
 		return client.PortForward(ctx, request)
 	})
 	logrus.Debugf("PortForwardResponse; %v", r)

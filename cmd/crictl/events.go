@@ -68,7 +68,7 @@ var eventsCommand = &cli.Command{
 			return err
 		}
 
-		if err = Events(c, runtimeClient); err != nil {
+		if err = events(c, runtimeClient); err != nil {
 			return fmt.Errorf("getting container events: %w", err)
 		}
 
@@ -76,7 +76,7 @@ var eventsCommand = &cli.Command{
 	},
 }
 
-func Events(cliContext *cli.Context, client internalapi.RuntimeService) error {
+func events(cliContext *cli.Context, client internalapi.RuntimeService) error {
 	errCh := make(chan error, 1)
 
 	containerEventsCh := make(chan *pb.ContainerEventResponse)
@@ -84,7 +84,7 @@ func Events(cliContext *cli.Context, client internalapi.RuntimeService) error {
 	go func() {
 		logrus.Debug("getting container events")
 
-		_, err := InterruptableRPC(cliContext.Context, func(ctx context.Context) (any, error) {
+		_, err := interruptableRPC(cliContext.Context, func(ctx context.Context) (any, error) {
 			return nil, client.GetContainerEvents(ctx, containerEventsCh, nil)
 		})
 		if errors.Is(err, io.EOF) {

@@ -80,7 +80,7 @@ func SetupInterruptSignalHandler() <-chan struct{} {
 	return signalIntStopCh
 }
 
-func InterruptableRPC[T any](
+func interruptableRPC[T any](
 	ctx context.Context,
 	rpcFunc func(context.Context) (T, error),
 ) (res T, err error) {
@@ -573,12 +573,12 @@ func matchesImage(ctx context.Context, imageClient internalapi.ImageManagerServi
 		return true, nil
 	}
 
-	r1, err := ImageStatus(ctx, imageClient, image, false)
+	r1, err := imageStatus(ctx, imageClient, image, false)
 	if err != nil {
 		return false, err
 	}
 
-	r2, err := ImageStatus(ctx, imageClient, containerImage, false)
+	r2, err := imageStatus(ctx, imageClient, containerImage, false)
 	if err != nil {
 		return false, err
 	}
@@ -592,7 +592,7 @@ func matchesImage(ctx context.Context, imageClient internalapi.ImageManagerServi
 }
 
 func getRepoImage(ctx context.Context, imageClient internalapi.ImageManagerService, image string) (string, error) {
-	r, err := ImageStatus(ctx, imageClient, image, false)
+	r, err := imageStatus(ctx, imageClient, image, false)
 	if err != nil {
 		return "", err
 	}
@@ -646,10 +646,10 @@ func handleDisplay(
 	}
 }
 
-// AggregateGoroutines runs the provided functions in parallel, stuffing all
+// aggregateGoroutines runs the provided functions in parallel, stuffing all
 // non-nil errors into the returned aggregate error.
 // Returns nil if all the functions complete successfully.
-func AggregateGoroutines(funcs ...func() error) error {
+func aggregateGoroutines(funcs ...func() error) error {
 	errChan := make(chan error, len(funcs))
 	for _, f := range funcs {
 		go func(f func() error) {

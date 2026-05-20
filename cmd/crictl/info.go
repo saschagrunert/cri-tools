@@ -59,7 +59,7 @@ var runtimeStatusCommand = &cli.Command{
 			return err
 		}
 
-		if err = Info(c, runtimeClient); err != nil {
+		if err = info(c, runtimeClient); err != nil {
 			return fmt.Errorf("getting status of runtime: %w", err)
 		}
 
@@ -67,12 +67,12 @@ var runtimeStatusCommand = &cli.Command{
 	},
 }
 
-// Info sends a StatusRequest to the server, and parses the returned StatusResponse.
-func Info(cliContext *cli.Context, client internalapi.RuntimeService) error {
+// info sends a StatusRequest to the server, and parses the returned StatusResponse.
+func info(cliContext *cli.Context, client internalapi.RuntimeService) error {
 	request := &pb.StatusRequest{Verbose: !cliContext.Bool("quiet")}
 	logrus.Debugf("StatusRequest: %v", request)
 
-	r, err := InterruptableRPC(cliContext.Context, func(ctx context.Context) (*pb.StatusResponse, error) {
+	r, err := interruptableRPC(cliContext.Context, func(ctx context.Context) (*pb.StatusResponse, error) {
 		return client.Status(ctx, request.GetVerbose())
 	})
 	logrus.Debugf("StatusResponse: %v", r)
